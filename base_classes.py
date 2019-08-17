@@ -66,7 +66,7 @@ class MenuComponent(MenuList):
     Specialized MenuList that contains a (possibly optional) component.
 
     Components are a sectiong device to name sub-trees: all of the menus, operai, commands, or anything else
-    to do with a particular component should be a desecdant of that compnent node in the hierarchy.
+    to do with a particular component should be a descendant of that compnent node in the hierarchy.
     """
 
     def __init__(self, name, short_name, comment):
