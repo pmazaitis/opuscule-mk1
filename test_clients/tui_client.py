@@ -476,7 +476,14 @@ class ApplianceClientProtocol(asyncio.Protocol):
             else:
                 logger.debug("Got a error before processing the command.)")
         except json.JSONDecodeError:
-            logger.debug("Error in JSON data: " + datas)
+            logger.debug("Error in JSON data: sending refresh")
+            self.send_refresh()
+
+    def send_refresh(self):
+        command = {"command": "refresh", "message": ""}
+        commands = json.dumps(command) + "\n"
+        self.transport.write(commands.encode())
+        logging.debug('Data sent: {!r}'.format(command))
 
     def send_command(self, command, option=""):
         command = {"command": command, "message": option}
