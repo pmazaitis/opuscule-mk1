@@ -20,6 +20,7 @@ This is meant to be a most basic example if how a python opuscule client might
 work, using threads to manage the network connections.
 """
 
+
 class TextLine:
     """
     Class to handle and manipulate lines of text to send to the display module.
