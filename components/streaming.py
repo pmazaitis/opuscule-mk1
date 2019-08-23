@@ -16,6 +16,7 @@ TODO: implement a way to pull feeds in from Dirble (in a kind, responsbile
 way...).
 """
 
+
 class StreamingComponent(AudioComponent):
     def __init__(self, sfavs, cpo):
         # Do Startup tasks
@@ -29,7 +30,7 @@ class StreamingComponent(AudioComponent):
         self.start_client()
 
         # Features
-        self.enable_dirble = False
+        self.enable_crb = False
 
         # This is part of the Streaming hierarchy
         self.component = "streaming"
@@ -48,11 +49,46 @@ class StreamingComponent(AudioComponent):
         self.load_favorites()
 
         self.custom_node = StreamingMenuList("Custom", "Cstm", "My custom stations")
-        self.dirble_node = StreamingMenuList("Dirble", "Drbl", "Streaming Audio Directory")
+        self.crd_node = StreamingMenuList("Community Radio", "CRD", "Community-driven radio directory")
 
         self.add_child(self.custom_node)
-        if self.enable_dirble:
-            self.add_child(self.dirble_node)
+        if self.enable_crd:
+            self.add_child(self.crd_node)
+
+        self.crb_genres = [
+            'adult contemporary',
+            'alternative',
+            'ambient',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+        ]
 
         # Reference Streaming menu in the superfavorites
 
@@ -68,8 +104,6 @@ class StreamingComponent(AudioComponent):
         # Populate the custom menu
         for station in custom_stations:
             self.custom_node.add_child(station)
-
-        # When we add an opus to a collection, we want to keep track of the genre/subgenre structure?
 
     def start_client(self):
         return self.loop.run_until_complete(self.__async__start_client())
@@ -113,6 +147,78 @@ class StreamingComponent(AudioComponent):
             pass
         except FileNotFoundError:
             pass
+
+    def init_crd(self):
+
+        self.crb_genres = [
+            'adult contemporary',
+            'alternative',
+            'ambient',
+            'anime',
+            'blues',
+            'chillout',
+            'classical',
+            'community radio',
+            'country',
+            'dance',
+            'edm',
+            'electronic',
+            'hard rock',
+            'hiphop',
+            'house',
+            'lounge',
+            'pop',
+            'progressive',
+            'reggae',
+            'techno',
+            'trance',
+            'world music',
+        ]
+
+        self.crb_eras = [
+            '20s',
+            '30s',
+            '40s',
+            '50s',
+            '60s',
+            '70s',
+            '80s',
+            '90s',
+            '00s',
+        ]
+
+        self.crb_regions = [
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+        ]
+
 
 
 class StreamingMenuList(MenuList):
