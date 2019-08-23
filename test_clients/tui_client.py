@@ -25,6 +25,7 @@ is useful for rapidly prototyping solutions for a particular hardware setup
 before breaking out the breadboards.
 """
 
+
 class TextLine:
     """
     Class to handle and manipulate lines of text to send to the display module.
