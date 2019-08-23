@@ -235,7 +235,7 @@ class OpusculeController:
 
         :return:
         """
-        home_comp = None
+        # home_comp = None FIXME do we no longer need this guard?
 
         # on startup, we might be in a state without a current opus
         if self.rs.now_playing.current_opus:
