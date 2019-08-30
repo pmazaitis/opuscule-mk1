@@ -3,6 +3,10 @@ import json
 import asyncio
 from mpd.asyncio import MPDClient
 
+from components.shoutcast import ShoutCast
+
+from urllib.parse import quote_plus
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,8 +16,6 @@ Opuscule streaming component: play streaming audio from remote sources.
 
 This component requires mpd to play audio.
 
-TODO: implement a way to pull feeds in from Dirble (in a kind, responsbile
-way...).
 """
 
 
@@ -29,9 +31,6 @@ class StreamingComponent(AudioComponent):
         # Use a return value here to set up fitness?
         self.start_client()
 
-        # Features
-        self.enable_crb = False
-
         # This is part of the Streaming hierarchy
         self.component = "streaming"
         # Config parser object
@@ -41,6 +40,14 @@ class StreamingComponent(AudioComponent):
         # Super favorites
         self.sfavs = sfavs
 
+        # Features
+        self.enable_crd = self.cpo.getboolean('streaming', 'crd_enable')
+        self.enable_shoutcast = self.cpo.getboolean('streaming', 'shoutcast_enable')
+
+        if self.enable_shoutcast:
+            self.shoutcast_api_key = self.cpo.get('streaming', 'shoutcast_api_key')
+            self.sc = ShoutCast(self.shoutcast_api_key)
+
         # Set up the areas of the component
 
         self.favs_save_file = "saved/{}_favorites.json".format(self.component)
@@ -49,46 +56,17 @@ class StreamingComponent(AudioComponent):
         self.load_favorites()
 
         self.custom_node = StreamingMenuList("Custom", "Cstm", "My custom stations")
-        self.crd_node = StreamingMenuList("Community Radio", "CRD", "Community-driven radio directory")
-
         self.add_child(self.custom_node)
+
         if self.enable_crd:
+            self.crd_node = StreamingMenuList("Community Radio", "CRD", "Community-driven radio directory")
             self.add_child(self.crd_node)
 
-        self.crb_genres = [
-            'adult contemporary',
-            'alternative',
-            'ambient',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-        ]
+        if self.enable_shoutcast:
+            self.shoutcast_node = StreamingMenuList("Shoutcast", "SC", "Shoutcast radio directory")
+            self.add_child(self.shoutcast_node)
+            # TODO: re-implement this without the library to decouple XML retreival and tree building
+            self.init_shoutcast()
 
         # Reference Streaming menu in the superfavorites
 
@@ -148,77 +126,97 @@ class StreamingComponent(AudioComponent):
         except FileNotFoundError:
             pass
 
-    def init_crd(self):
+    def init_shoutcast(self):
 
-        self.crb_genres = [
-            'adult contemporary',
-            'alternative',
-            'ambient',
-            'anime',
-            'blues',
-            'chillout',
-            'classical',
-            'community radio',
-            'country',
-            'dance',
-            'edm',
-            'electronic',
-            'hard rock',
-            'hiphop',
-            'house',
-            'lounge',
-            'pop',
-            'progressive',
-            'reggae',
-            'techno',
-            'trance',
-            'world music',
-        ]
+        genre_node = StreamingMenuList("Genres", "Gnr", "Shoutcast radio directory genres")
 
-        self.crb_eras = [
-            '20s',
-            '30s',
-            '40s',
-            '50s',
-            '60s',
-            '70s',
-            '80s',
-            '90s',
-            '00s',
-        ]
+        for genre in self.sc.genres():
+            this_genre_node = StreamingMenuList(genre, "", "")
+            qgenre = quote_plus(genre)
+            for station in self.sc.stations(qgenre):
+                this_station = ShoutcastOpus(self.sc,
+                                             self.mpdc,
+                                             station[0],
+                                             station[1],
+                                             station[2],
+                                             genre,
+                                             station[3],
+                                             station[4],
+                                             )
+                this_genre_node.add_child(this_station)
+            genre_node.add_child(this_genre_node)
+        self.shoutcast_node.add_child(genre_node)
 
-        self.crb_regions = [
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-        ]
-
+    # def init_crd(self):
+    #
+    #     self.crb_genres = [
+    #         'adult contemporary',
+    #         'alternative',
+    #         'ambient',
+    #         'anime',
+    #         'blues',
+    #         'chillout',
+    #         'classical',
+    #         'community radio',
+    #         'country',
+    #         'dance',
+    #         'edm',
+    #         'electronic',
+    #         'hard rock',
+    #         'hiphop',
+    #         'house',
+    #         'lounge',
+    #         'pop',
+    #         'progressive',
+    #         'reggae',
+    #         'techno',
+    #         'trance',
+    #         'world music',
+    #     ]
+    #
+    #     self.crb_eras = [
+    #         '20s',
+    #         '30s',
+    #         '40s',
+    #         '50s',
+    #         '60s',
+    #         '70s',
+    #         '80s',
+    #         '90s',
+    #         '00s',
+    #     ]
+    #
+    #     self.crb_regions = [
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #         '',
+    #     ]
 
 
 class StreamingMenuList(MenuList):
@@ -254,6 +252,60 @@ class StreamingOpus(Opus):
         self.id = ""
 
     def opus_play(self):
+        asyncio.run_coroutine_threadsafe(self._opus_play(), self.loop)
+
+    async def _opus_play(self):
+        await self.mpdc.clear()
+        await self.mpdc.add(self.url)
+        await self.mpdc.play()
+
+    def opus_stop(self):
+        asyncio.run_coroutine_threadsafe(self._opus_stop(), self.loop)
+
+    async def _opus_stop(self):
+        await self.mpdc.stop()
+        await self.mpdc.clear()
+
+    def opus_get_metadata(self):
+        opus_metadata = {'component': self.component,
+                         'type': 'stream',
+                         'name': self.menu_labels['name'],
+                         'comment': self.menu_labels['comment'],
+                         'title': self.menu_labels['name'],
+                         'url': self.url,
+                         'genre': self.genre,
+                         'subgenre': self.subgenre
+                         }
+
+        return opus_metadata
+
+
+class ShoutcastOpus(Opus):
+    playlist_name = "opus_streaming_playlist"
+
+    def __init__(self, sc, mpd_client, name, streamid, br, genre, ct, lc, subgenre=""):
+        super().__init__(name, "", "")
+
+        self.sc = sc
+        self.mpdc = mpd_client
+        self.name = name
+        self.streamid = streamid
+        self.br = br
+        self.genre = genre
+        self.ct = ct
+        self.lc = lc
+        self.subgenre = subgenre
+        self.component = "streaming"
+        self.loop = asyncio.get_event_loop()
+        self.file = ""
+        self.title = ""
+        self.url = ""
+
+    def opus_play(self):
+        station_obj = self.sc.tune_in(self.streamid)
+
+        self.url = station_obj.url
+
         asyncio.run_coroutine_threadsafe(self._opus_play(), self.loop)
 
     async def _opus_play(self):

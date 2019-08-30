@@ -3,8 +3,9 @@
 # Copyright (C) 2009 Mario Boikov <mario@beblue.org>.
 
 import xml.etree.ElementTree as etree
-import urllib
-import urllib2
+from urllib.parse import urlencode, quote_plus, quote
+from urllib.request import urlopen
+
 
 class ShoutCast(object):
     """
@@ -20,13 +21,18 @@ class ShoutCast(object):
     modifications. 
     """
 
-    def __init__(self):
+    def __init__(self, dev_id):
         """ Creates a Shoutcast API instance """
+
+        self.dev_id = dev_id
 
         self.genre_url = 'http://yp.shoutcast.com/sbin/newxml.phtml'
         self.station_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?genre={0}'
         self.tune_in_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
         self.search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'
+
+        self.get_all_genres_url = 'http://api.shoutcast.com/legacy/genrelist?k={0}'
+        self.get_stations_by_genre_url = 'http://api.shoutcast.com/legacy/genresearch?k={0}&genre={1}'
 
     def genres(self):
         """
@@ -36,7 +42,7 @@ class ShoutCast(object):
         Example:
         ('Rock', 'Pop', '...')
         """
-        genrelist = self._parse_xml(self.genre_url)
+        genrelist = self._parse_xml(self.get_all_genres_url.format(self.dev_id))
         return tuple(genre.get('name')
                      for genre in genrelist.findall('genre') if genre.get('name'))
 
@@ -51,7 +57,7 @@ class ShoutCast(object):
         (('Hit Radio Station #1', 1234, 128, 'An artist - A Hit song', 123),
          ('Hit Radio Station #2', 5678, 256, 'A track name', 43)) 
         """
-        url = self.station_url.format(genre)
+        url = self.get_stations_by_genre_url.format(self.dev_id, genre)
         return self._generate_stations(url)
 
     def search(self, criteria, limit=-1):
@@ -61,11 +67,11 @@ class ShoutCast(object):
         
         Returns the same kind of tuple as stations()
         """
-        params = {'search' : criteria}
+        params = {'search': criteria}
         if limit > 0:
             params['limit'] = limit
 
-        url = self.search_url.format(urllib.urlencode(params))
+        url = self.search_url.format(urlencode(params, quote_via=quote_plus))
         return self._generate_stations(url)
 
     def random(self):
@@ -80,14 +86,14 @@ class ShoutCast(object):
     def tune_in(self, station_id):
         """ Return the station's play list (shoutcast pls) as a file-like object. """
         url = self.tune_in_url.format(station_id)
-        return urllib2.urlopen(url)
+        return urlopen(url)
 
     def _parse_xml(self, url):
         """
         Returns an ElementTree element by downloading and parsing the XML from the
         specified URL.
         """
-        file = urllib2.urlopen(url)
+        file = urlopen(url)
         return etree.parse(file)
 
     def _generate_stations(self, url):
