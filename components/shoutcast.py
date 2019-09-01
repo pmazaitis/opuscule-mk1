@@ -3,7 +3,7 @@
 # Copyright (C) 2009 Mario Boikov <mario@beblue.org>.
 
 import xml.etree.ElementTree as etree
-from urllib.parse import urlencode, quote_plus, quote
+from urllib.parse import urlencode, quote_plus
 from urllib.request import urlopen
 
 
@@ -26,13 +26,16 @@ class ShoutCast(object):
 
         self.dev_id = dev_id
 
-        self.genre_url = 'http://yp.shoutcast.com/sbin/newxml.phtml'
-        self.station_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?genre={0}'
-        self.tune_in_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
-        self.search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'
+        self.base = ""
+
+        # self.genre_url = 'http://yp.shoutcast.com/sbin/newxml.phtml'
+        # self.station_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?genre={0}'
+        # self.tune_in_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
+        self.search_url = 'http://api.shoutcast.com/legacy/newxml.phtml?k={0}&search={1}'
 
         self.get_all_genres_url = 'http://api.shoutcast.com/legacy/genrelist?k={0}'
         self.get_stations_by_genre_url = 'http://api.shoutcast.com/legacy/genresearch?k={0}&genre={1}'
+        self.tune_in_url = 'http://yp.shoutcast.com/{0}?id={1}'
 
     def genres(self):
         """
@@ -71,7 +74,7 @@ class ShoutCast(object):
         if limit > 0:
             params['limit'] = limit
 
-        url = self.search_url.format(urlencode(params, quote_via=quote_plus))
+        url = self.search_url.format(self.dev_id, urlencode(params, quote_via=quote_plus))
         return self._generate_stations(url)
 
     def random(self):
@@ -85,7 +88,8 @@ class ShoutCast(object):
 
     def tune_in(self, station_id):
         """ Return the station's play list (shoutcast pls) as a file-like object. """
-        url = self.tune_in_url.format(station_id)
+        url = self.tune_in_url.format(self.base, station_id)
+
         return urlopen(url)
 
     def _parse_xml(self, url):
@@ -100,6 +104,8 @@ class ShoutCast(object):
         """ Return a tuple with stations traversing the stationlist element tree. """
         stationlist = self._parse_xml(url)
         result = []
+
+        self.base = stationlist.find('./tunein').attrib['base']
 
         for station in stationlist.findall('station'):
             entry = (station.get('name'),
