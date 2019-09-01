@@ -3,9 +3,13 @@ import json
 import asyncio
 from mpd.asyncio import MPDClient
 
+from pyparsing import *
+
 from components.shoutcast import ShoutCast
 
 from urllib.parse import quote_plus
+
+import random
 
 import logging
 
@@ -130,10 +134,15 @@ class StreamingComponent(AudioComponent):
 
         genre_node = StreamingMenuList("Genres", "Gnr", "Shoutcast radio directory genres")
 
-        for genre in self.sc.genres():
+        logger.debug(f"Getting genre list.")
+
+        # for genre in self.sc.genres():
+        for genre in ['Classical', 'Dance', 'Early Classical']:
+            logger.debug(f"Populating node for genre: {genre}")
             this_genre_node = StreamingMenuList(genre, "", "")
             qgenre = quote_plus(genre)
             for station in self.sc.stations(qgenre):
+                logger.debug(f"Populating node for genre: {genre} with station: {station[0]}")
                 this_station = ShoutcastOpus(self.sc,
                                              self.mpdc,
                                              station[0],
@@ -280,6 +289,9 @@ class StreamingOpus(Opus):
         return opus_metadata
 
 
+# Shoutcast support
+
+
 class ShoutcastOpus(Opus):
     playlist_name = "opus_streaming_playlist"
 
@@ -298,17 +310,29 @@ class ShoutcastOpus(Opus):
         self.component = "streaming"
         self.loop = asyncio.get_event_loop()
         self.file = ""
-        self.title = ""
-        self.url = ""
+        self.title = ct
+        self.url = None
+        self.file = ""
+        self.pos = ""
+        self.id = ""
 
     def opus_play(self):
+        logger.debug(f"Getting stream for {self.name} (ID: {self.streamid})")
+
         station_obj = self.sc.tune_in(self.streamid)
 
-        self.url = station_obj.url
+        playlist_string = station_obj.read().decode('ascii')
+
+        pls = PlsPlaylist(playlist_string)
+
+        self.url = pls.get_load_balanced_url()
+
+        logger.debug(f"Got URL for {self.name}: {self.url}")
 
         asyncio.run_coroutine_threadsafe(self._opus_play(), self.loop)
 
     async def _opus_play(self):
+        logger.debug(f"Playing stream for {self.name} (URL: {self.url})")
         await self.mpdc.clear()
         await self.mpdc.add(self.url)
         await self.mpdc.play()
@@ -332,3 +356,63 @@ class ShoutcastOpus(Opus):
                          }
 
         return opus_metadata
+
+
+class ShoutcastHandler(object):
+    def __init__(self, dev_id):
+        """ Creates a Shoutcast API instance """
+
+        self.dev_id = dev_id
+
+        self.get_all_genres_url = 'http://api.shoutcast.com/legacy/genrelist?k={0}'
+        self.get_stations_by_genre_url = 'http://api.shoutcast.com/legacy/genresearch?k={0}&genre={1}'
+        self.tune_in_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
+        # self.search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'
+
+
+class PlsPlaylist(object):
+    def __init__(self, pls):
+        # Our grammar for parsing a pls into an object:
+        #
+        # pls_file    ::= header + num_entries + stanza* + version
+        # header      ::= "[playlist]"
+        # num_entries ::= "numberofentries=" + nums+
+        # stanza      ::= file + title + length
+        # file        ::= "file" + nums+ + "=" + stream_url
+        # stream_url  ::= alphanums+
+        # title       ::= "title" + nums+ + "=" + title_text
+        # title_text  ::= alphanums+
+        # length      ::= "length" + nums+ + "=" + length_val
+        # length_val  ::= ["-"] + nums+
+        # version     ::= "version=" + version_val
+        # version_val ::= nums+
+
+        logger.debug(f"PLS File: {pls}")
+
+        equals = Suppress(Literal('='))
+
+        header = Suppress(Literal('[playlist]')) + Suppress(LineEnd())
+        num_entries = Word(nums)("num_entries")
+        num_entries_line = Suppress(Literal('numberofentries=')) + num_entries + Suppress(LineEnd())
+        stream_url = Word(printables)("stream_url")
+        file_num = Word(nums)("entry_num")
+        file_line = Suppress(Literal('File')) + file_num + equals + stream_url + Suppress(LineEnd())
+        title_text = Combine(OneOrMore(Word(printables) | White(' ', max=1) + ~White()))("title_text")
+        title_num = Word(nums)
+        title_line = Suppress(Literal('Title')) + Suppress(title_num) + equals + title_text + Suppress(LineEnd())
+        length_num = Word(nums)
+        length_val = Combine(Optional(Literal('-')) + Word(nums))
+        length_line = Suppress(Literal('Length')) + Suppress(length_num) + equals + length_val + Suppress(LineEnd())
+        stream_stanza = Group(file_line + title_line + length_line)
+        version_num = Word(nums)("version_num")
+        version_line = Suppress(Literal('Version')) + equals + version_num + Suppress(LineEnd())
+        po = header + num_entries_line + Dict(ZeroOrMore(stream_stanza)) + version_line
+
+        self.playlist = po.parseString(pls)
+
+        logger.debug(self.playlist)
+
+    def get_load_balanced_url(self):
+        i = random.randint(1, int(self.playlist['num_entries']))
+
+        return self.playlist[i]['stream_url']
