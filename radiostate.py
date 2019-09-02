@@ -352,7 +352,6 @@ class RadioState:
         await self.now_playing.current_opus.opus_play()
 
 
-
     def reset_playing(self):
         """
         Set the state to playing, but do not reload the current opus if it is already playing or paused.
