@@ -287,7 +287,7 @@ class RadioState:
         self.prev_component = ""
         self.valid_actions = ['play', 'stop', 'pause']
         self.current_state = 'stopped'
-
+        self.loop = asyncio.get_event_loop()
         self.changes = asyncio.Queue()
 
     # State machine for play state
@@ -331,14 +331,27 @@ class RadioState:
 
         We need this state transition for those cases when a new opus needs to be loaded as part of the state
         transition.
+
+        TODO: make this async to solve shoutcast race condition?
         """
 
         self.current_state = 'playing'
         if isinstance(self.menu.selected_node, Opus):
-            self.now_playing.current_opus.opus_stop()
-            self.now_playing.load(self.menu.selected_node)
-            self.now_playing.current_opus.opus_play()
+            # self.now_playing.current_opus.opus_stop()
+            # self.now_playing.load(self.menu.selected_node)
+            # self.now_playing.current_opus.opus_play()
+            asyncio.run_coroutine_threadsafe(self._set_playing(self.menu.selected_node), self.loop)
             self.set_playing_indicators()
+
+    async def _set_playing(self, node_to_play):
+        """
+
+        """
+        await self.now_playing.current_opus.opus_stop()
+        await self.now_playing.load(node_to_play)
+        await self.now_playing.current_opus.opus_play()
+
+
 
     def reset_playing(self):
         """
