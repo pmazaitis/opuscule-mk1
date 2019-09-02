@@ -27,7 +27,7 @@ class ShoutCast(object):
 
         self.dev_id = dev_id
 
-        self.save_dir = "saved"
+        self.save_dir = "components/saved"
         self.cache_subdir = "shoutcast_cache"
 
         self.full_cache_dir = self.save_dir + '/' + self.cache_subdir
@@ -102,7 +102,7 @@ class ShoutCast(object):
         with open(full_file_path, 'r') as f:
             stationlist = etree.parse(f)
 
-        self.base = stationlist.find('./tunein').attrib['base']
+        self.url_base = stationlist.find('./tunein').attrib['base']
 
         for station in stationlist.findall('station'):
             entry = (station.get('name'),
@@ -119,7 +119,16 @@ class ShoutCast(object):
 
     async def get_station_playlist(self, station_id):
         """ Returns a pls playlist object"""
+        url = self.tune_in_url.format(self.url_base, station_id)
 
+        async with aiohttp.ClientSession() as session:
+            pls_obj = await self.fetch(session, url)
+
+        pls_txt = pls_obj.read().decode('ascii')
+
+        pls = PlsPlaylist(pls_txt)
+
+        return pls
 
 
 class PlsPlaylist(object):
