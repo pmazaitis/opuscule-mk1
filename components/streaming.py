@@ -5,7 +5,9 @@ from mpd.asyncio import MPDClient
 
 from pyparsing import *
 
-from components.shoutcast import ShoutCast
+#from components.shoutcast import ShoutCast
+
+from components.aioshoutcast import ShoutCast, PlsPlaylist
 
 from urllib.parse import quote_plus
 
@@ -357,17 +359,6 @@ class ShoutcastOpus(Opus):
 
         return opus_metadata
 
-
-class ShoutcastHandler(object):
-    def __init__(self, dev_id):
-        """ Creates a Shoutcast API instance """
-
-        self.dev_id = dev_id
-
-        self.get_all_genres_url = 'http://api.shoutcast.com/legacy/genrelist?k={0}'
-        self.get_stations_by_genre_url = 'http://api.shoutcast.com/legacy/genresearch?k={0}&genre={1}'
-        self.tune_in_url = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id={0}'
-        # self.search_url = 'http://yp.shoutcast.com/sbin/newxml.phtml?{0}'
 
 
 class PlsPlaylist(object):
