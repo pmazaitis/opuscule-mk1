@@ -49,6 +49,11 @@ logger = logging.getLogger(__name__)
 
 # TODO:
 #
+# ## Extend command set
+#
+# * reset_system_state (for testing)
+#
+#
 # ## Unimplemented components:
 #
 # shairport
